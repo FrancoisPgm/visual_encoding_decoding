@@ -1,17 +1,12 @@
 import torch
 import torch.nn as nn
-from torchvision import transforms
+from dataset import img_transform
 
 
 class Encoder(nn.Module):
     def __init__(self, n_voxels):
         super(Encoder, self).__init__()
-        self.preprocess = transforms.Compose([
-            transforms.Resize(128),
-            transforms.CenterCrop(112),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
+        self.preprocess = img_transform
         self.alexnetConv1 = nn.Sequential(
                 torch.load("data/pretrained/alexconv1.pkl"),
                 nn.ReLU()
@@ -31,6 +26,15 @@ class Encoder(nn.Module):
         self.fc = nn.Linear(5408, n_voxels)
 
     def forward(self, x):
+        y = self.alexnetConv1(x)
+        y = self.conv2(y)
+        y = self.conv3(y)
+        y = self.dropout(y)
+        y = self.fc(y)
+        return y
+
+    def predict(self, x):
+        self.eval()
         x = self.preprocess(x)
         y = self.alexnetConv1(x)
         y = self.conv2(y)
