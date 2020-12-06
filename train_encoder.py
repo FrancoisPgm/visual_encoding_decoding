@@ -2,26 +2,27 @@ import torch
 import numpy as np
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from dataset import MRIImgDataset
+from datasets import MRIImgDataset
 from models import Encoder
 from loss import MRILoss
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print "Working on {}.".format(device)
+print("Working on {}.".format(device))
 
 out_path = "trained_models/encoder"
 
 ## PARAMS ##
-MRI_DIR = "data/preprocessed/mri"
+MRI_DIR = "data/preprocessed/fmri"
 N_VOXELS = 7435
 IMG_DIR = "data/preprocessed/frames"
 FILTERS_TNG = ["sub-01", "task-s01"]
 FILTERS_VAL = ["sub-01", "task-s02"]
-BS = 15
-NB_EPOCHS = 100
+BS = 100
+NB_EPOCHS = 10
 LR = 0.1
-L1 = 0.1
-L2 = 0.1
+L1_conv = 1e5
+L1_fc = 10
+L2 = 0.001
 
 def step_decay(epoch):
     lrate = 1
@@ -62,8 +63,12 @@ for epoch in range(NB_EPOCHS):
         loss = loss_function(output, gts.to(device))
         reg_loss = 0
         for param in encoder.parameters():
-            reg_loss += l1_penalty(param)
-        tot_loss = loss + L1 * reg_loss
+            if param.shape[0] == N_VOXELS:
+                l1_factor = L1_fc
+            else:
+                l1_factor = L1_conv
+            reg_loss += l1_factor * l1_penalty(param)
+        tot_loss = loss + reg_loss
         tot_loss.backward()
         optimizer.step()
         loss_sum_tng += loss.item()/len(dataloader_tng)

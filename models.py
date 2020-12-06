@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from dataset import img_transform
+from datasets import img_transform
 
 
 class Encoder(nn.Module):
