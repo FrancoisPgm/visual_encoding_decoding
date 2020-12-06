@@ -22,7 +22,7 @@ class MRIImgDataset(Dataset):
         mri_path_list = [os.path.join(mri_dir, p) for p in os.listdir(mri_dir) if ".npy" in p]
 
         for filter in filters:
-            mri_path_list = [p in mri_path if filter in p]
+            mri_path_list = [p for p in mri_path if filter in p]
 
         self.handlers = []
         for mri_path in mri_path_list:
@@ -34,7 +34,7 @@ class MRIImgDataset(Dataset):
                 i_img_start = i_img_peak - int(img_per_mri/2)
                 if i_img_start > 0:
                     imgs = []
-                    for i_img in range(i_img_start, i_mg_start+img_per_mri):
+                    for i_img in range(i_img_start, i_img_start+img_per_mri):
                         img_path = os.path.join(img_dir, episode, episode+"_frame-{}.jpg".format(i_img))
                         img_data = PIL.Image.open(img_path)
                         img_data = img_transform(img_data).type(torch.float32)
@@ -57,13 +57,13 @@ class MRIDataset(Dataset):
         mri_path_list = [os.path.join(mri_dir, p) for p in os.listdir(mri_dir) if ".npy" in p]
 
         for filter in filters:
-            mri_path_list = [p in mri_path if filter in p]
+            mri_path_list = [p for p in mri_path if filter in p]
 
         self.handlers = []
         for mri_path in mri_path_list:
             mri_data = np.load(mri_path)
             mri_data = torch.tensor(mri_data, dtype=torch.float32)
-            for t in range(mri_data.shape[0])
+            for t in range(mri_data.shape[0]):
                 self.handlers.append(mri_data[t])
 
 
@@ -81,7 +81,7 @@ class IMGDataset(Dataset):
         img_path_list = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if ".npy" in p]
 
         for filter in filters:
-            img_path_list = [p in img_path if filter in p]
+            img_path_list = [p for p in img_path if filter in p]
 
         self.handlers = []
         for img_path in img_path_list:

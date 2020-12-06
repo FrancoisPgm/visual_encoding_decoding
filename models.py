@@ -4,23 +4,23 @@ from dataset import img_transform
 
 
 class Encoder(nn.Module):
-    def __init__(self, n_voxels, n_img=1):
+    def __init__(self, n_voxels=7435, n_img=1):
         super(Encoder, self).__init__()
         self.n_img = n_img
         self.preprocess = img_transform
         self.alexnetConv1 = nn.Sequential(
-                torch.load("data/pretrained/alexconv1.pkl"),
-                nn.ReLU()
+                torch.load("data/external/alexconv1.pkl"),
+                nn.ReLU(),
                 nn.BatchNorm2d(64),
         )
         self.conv2 = nn.Sequential(
                 nn.Conv2d(64, 32, 3, stride=2),
-                nn.ReLU()
+                nn.ReLU(),
                 nn.BatchNorm2d(32),
         )
         self.conv3 = nn.Sequential(
                 nn.Conv2d(32, 32, 3, stride=2),
-                nn.ReLU()
+                nn.ReLU(),
                 nn.BatchNorm2d(32),
         )
         self.flatten = nn.Flatten(start_dim=1)
@@ -58,7 +58,7 @@ class Encoder(nn.Module):
         return y
 
 
-def Decoder(nn.Module):
+class Decoder(nn.Module):
     def __init__(self, n_voxels):
         super(Decoder, self).__init__()
         self.fc = nn.Linear(n_voxels, 14*14*64)

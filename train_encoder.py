@@ -24,22 +24,22 @@ L1 = 0.1
 L2 = 0.1
 
 def step_decay(epoch):
-   lrate = 1
-   if(epoch>20):
-       lrate = 0.1
-   if (epoch > 35):
-       lrate = 0.01
-   if (epoch > 45):
-       lrate = 0.001
-   if (epoch > 50):
-       lrate = 0.0001
-   return lrate
+    lrate = 1
+    if(epoch>20):
+        lrate = 0.1
+    if (epoch > 35):
+        lrate = 0.01
+    if (epoch > 45):
+        lrate = 0.001
+    if (epoch > 50):
+        lrate = 0.0001
+    return lrate
 
 dataset_tng = MRIImgDataset(MRI_DIR, IMG_DIR, FILTERS_TNG)
 dataset_val = MRIImgDataset(MRI_DIR, IMG_DIR, FILTERS_VAL)
 
-dataloader_tng = DataLoader(dataset_tng, batch_size=BS, shuffle=True, num_worker=1)
-dataloader_val = DataLoader(dataset_val, batch_size=BS, shuffle=True, num_worker=1)
+dataloader_tng = DataLoader(dataset_tng, batch_size=BS, shuffle=True, num_workers=1)
+dataloader_val = DataLoader(dataset_val, batch_size=BS, shuffle=True, num_workers=1)
 
 encoder = Encoder().to(device)
 optimizer = optim.Adam(encoder.parameters(), lr=LR, weight_decay=L2)
@@ -52,7 +52,6 @@ losses_val = []
 
 ## TRAINING LOOP ##
 for epoch in range(NB_EPOCHS):
-    scheduler.step()
     encoder.train()
     loss_sum_tng = 0.
     for i_batch, sampled_batch in enumerate(dataloader_tng):
@@ -69,6 +68,7 @@ for epoch in range(NB_EPOCHS):
         optimizer.step()
         loss_sum_tng += loss.item()/len(dataloader_tng)
     losses_tng.append(loss_sum_tng)
+    scheduler.step()
 
     loss_sum_val = 0.
     encoder.eval()
