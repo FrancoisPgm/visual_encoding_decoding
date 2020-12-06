@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import os
 import PIL
+from math import ceil
 from torchvision import transforms
 from torch.utils.data import Dataset
 
@@ -15,28 +16,31 @@ img_transform = transforms.Compose([
 
 
 class MRIImgDataset(Dataset):
-    def __init__(self, mri_dir, img_dir, filters=[], to_tensor=True):
+    def __init__(self, mri_dir, img_dir, filters=[], delay=5.4,
+                 fps=4.994742376, tr=1.49, img_per_mri=1):
 
         mri_path_list = [os.path.join(mri_dir, p) for p in os.listdir(mri_dir) if ".npy" in p]
-        img_path_list = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if ".jpeg" in p]
 
         for filter in filters:
             mri_path_list = [p in mri_path if filter in p]
-            img_path_list = [p in img_path if filter in p]
 
         self.handlers = []
         for mri_path in mri_path_list:
             mri_data = np.load(mri_path)
-            if to_tensor:
-                mri_data = torch.tensor(mri_data, dtype=torch.float32)
+            mri_data = torch.tensor(mri_data, dtype=torch.float32)
             episode = os.path.split(mri_path)[1].split("task-")[1].split("_")[0]
-            for img_path in img_path_list:
-                if episode in img_path:
-                    t = int(os.path.split(img_path)[0].split("t-")[1].split(".")[0])
-                    img_data = PIL.Image.open(img_path)
-                    if to_tensor:
+            for i in range(mri_data.shape[0]):
+                i_img_peak = int(i*tr*fps) - ceil(delay/fps)
+                i_img_start = i_img_peak - int(img_per_mri/2)
+                if i_img_start > 0:
+                    imgs = []
+                    for i_img in range(i_img_start, i_mg_start+img_per_mri):
+                        img_path = os.path.join(img_dir, episode, episode+"_frame-{}.jpg".format(i_img))
+                        img_data = PIL.Image.open(img_path)
                         img_data = img_transform(img_data).type(torch.float32)
-                    self.handlers.append({"mri":mri_data[t], "img":img_data})
+                        imgs.append(img_data)
+                    imgs = torch.stack(imgs)
+                    self.handlers.append({"mri":mri_data[i], "img":img_data})
 
 
     def __len__(self):
@@ -48,7 +52,7 @@ class MRIImgDataset(Dataset):
 
 
 class MRIDataset(Dataset):
-    def __init__(self, mri_dir, filters=[], to_tensor=True):
+    def __init__(self, mri_dir, filters=[]):
 
         mri_path_list = [os.path.join(mri_dir, p) for p in os.listdir(mri_dir) if ".npy" in p]
 
@@ -58,8 +62,7 @@ class MRIDataset(Dataset):
         self.handlers = []
         for mri_path in mri_path_list:
             mri_data = np.load(mri_path)
-            if to_tensor:
-                mri_data = torch.tensor(mri_data, dtype=torch.float32)
+            mri_data = torch.tensor(mri_data, dtype=torch.float32)
             for t in range(mri_data.shape[0])
                 self.handlers.append(mri_data[t])
 
@@ -73,7 +76,7 @@ class MRIDataset(Dataset):
 
 
 class IMGDataset(Dataset):
-    def __init__(self, img_dir, filters=[], to_tensor=True):
+    def __init__(self, img_dir, filters=[]):
 
         img_path_list = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if ".npy" in p]
 
@@ -83,8 +86,7 @@ class IMGDataset(Dataset):
         self.handlers = []
         for img_path in img_path_list:
             img_data = PIL.Image.open(img_path)
-            if to_tensor:
-                img_data = img_transform(img_data).type(torch.float32)
+            img_data = img_transform(img_data).type(torch.float32)
             self.handlers.append(img_data)
 
 
