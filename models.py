@@ -27,7 +27,7 @@ class Encoder(nn.Module):
         if self.n_img > 1:
             self.conv_temp = nn.Conv1d(n_img, 1, 1)
         self.dropout = nn.Dropout(p=0.5)
-        self.fc = nn.Linear(5408, n_voxels)
+        self.fc = nn.Linear(1152, n_voxels)
 
     def forward(self, x):
         if self.n_img > 1:
@@ -40,8 +40,8 @@ class Encoder(nn.Module):
         else:
             x = x[:,0]
             y = self.alexnetConv1(x)
-            y = self.conv2(x)
-            y = self.conv3(x)
+            y = self.conv2(y)
+            y = self.conv3(y)
             y = self.flatten(y)
         y = self.dropout(y)
         y = self.fc(y)

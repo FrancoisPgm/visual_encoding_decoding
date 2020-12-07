@@ -6,6 +6,6 @@ class MRILoss(object):
         self.mse = MSELoss().to(device)
         self.cosine_sim = CosineSimilarity().to(device)
 
-    def __call__(x, y):
+    def __call__(self, x, y):
         loss = self.mse(x,y) - self.k * self.cosine_sim(x, y)
         return loss

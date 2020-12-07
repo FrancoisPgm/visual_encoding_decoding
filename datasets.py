@@ -47,7 +47,7 @@ class MRIImgDataset(Dataset):
                         img_data = img_transform(img_data).type(torch.float32)
                         imgs.append(img_data)
                     imgs = torch.stack(imgs)
-                    self.handlers.append({"mri":mri_data[i], "img":img_data})
+                    self.handlers.append({"mri":mri_data[i], "img":imgs})
 
 
     def __len__(self):

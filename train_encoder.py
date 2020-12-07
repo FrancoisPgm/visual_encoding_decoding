@@ -39,14 +39,13 @@ def step_decay(epoch):
 dataset_tng = MRIImgDataset(MRI_DIR, IMG_DIR, FILTERS_TNG)
 dataset_val = MRIImgDataset(MRI_DIR, IMG_DIR, FILTERS_VAL)
 
-dataloader_tng = DataLoader(dataset_tng, batch_size=BS, shuffle=True, num_workers=1)
-dataloader_val = DataLoader(dataset_val, batch_size=BS, shuffle=True, num_workers=1)
+dataloader_tng = DataLoader(dataset_tng, batch_size=BS, shuffle=True)
+dataloader_val = DataLoader(dataset_val, batch_size=BS, shuffle=True)
 
 encoder = Encoder().to(device)
 optimizer = optim.Adam(encoder.parameters(), lr=LR, weight_decay=L2)
 scheduler = optim.lr_scheduler.LambdaLR(optimizer, step_decay)
 loss_function = MRILoss(device)
-l1_penalty = torch.nn.L1Loss().to(device)
 
 losses_tng = []
 losses_val = []
@@ -67,11 +66,11 @@ for epoch in range(NB_EPOCHS):
                 l1_factor = L1_fc
             else:
                 l1_factor = L1_conv
-            reg_loss += l1_factor * l1_penalty(param)
+            reg_loss += l1_factor * torch.norm(param, 1)
         tot_loss = loss + reg_loss
-        tot_loss.backward()
+        tot_loss.sum().backward()
         optimizer.step()
-        loss_sum_tng += loss.item()/len(dataloader_tng)
+        loss_sum_tng += loss.sum().item()/BS/len(dataloader)
     losses_tng.append(loss_sum_tng)
     scheduler.step()
 
@@ -82,7 +81,7 @@ for epoch in range(NB_EPOCHS):
         output = encoder(sampled_batch["img"].to(device))
         gts = sampled_batch["mri"]
         loss = loss_function(output, gts)
-        loss_sum_val += loss.item()/len(dataloader_val)
+        loss_sum_val += loss.smu().item()/BS/len(dataloader_val)
     losses_val.append(loss_sum_val)
 
     print("epoch", epoch, "tng:", loss_sum_tng, "val:", loss_sum_val)
