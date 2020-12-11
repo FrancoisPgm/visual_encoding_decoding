@@ -3,10 +3,22 @@ import torch.nn as nn
 from datasets import img_transform
 
 
+def normal_init(m, mean=0., std=1.):
+    if isinstance(m, (nn.Linear, nn.Conv2d)):
+        m.weight.data.normal_(mean, std)
+        if m.bias.data is not None:
+            m.bias.data.zero_()
+    elif isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d)):
+        m.weight.data.fill_(1)
+        if m.bias.data is not None:
+            m.bias.data.zero_()
+
+
 class Encoder(nn.Module):
     def __init__(self, n_voxels=7435, n_img=1):
         super(Encoder, self).__init__()
         self.n_img = n_img
+        self.n_voxels=n_voxels
         self.preprocess = img_transform
         self.alexnetConv1 = nn.Sequential(
                 torch.load("data/external/alexconv1.pkl"),
@@ -26,8 +38,9 @@ class Encoder(nn.Module):
         self.flatten = nn.Flatten(start_dim=1)
         if self.n_img > 1:
             self.conv_temp = nn.Conv1d(n_img, 1, 1)
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.2)
         self.fc = nn.Linear(1152, n_voxels)
+        self.weight_init()
 
     def forward(self, x):
         if self.n_img > 1:
@@ -56,6 +69,17 @@ class Encoder(nn.Module):
         x = x.unsqueeze(dim=0)
         y = self.forward(x).squeeze()
         return y
+
+    def weight_init(self):
+        for block in self._modules:
+            if block != "alexnetConv1":
+                try:
+                    for m in self._modules[block]:
+                        normal_init(m,mean,std)
+                except:
+                    normal_init(block)
+
+
 
 
 class Decoder(nn.Module):
@@ -99,3 +123,13 @@ class Decoder(nn.Module):
         x = torch.tensor(x, dtype=torch.float32).unsqueeze(0)
         y = self.forward(x).squeeze()
         return y
+
+    def weight_init(self):
+        for block in self._modules:
+            try:
+                for m in self._modules[block]:
+                    normal_init(m,mean,std)
+            except:
+                normal_init(block)
+
+ 

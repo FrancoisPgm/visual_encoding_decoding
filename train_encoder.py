@@ -1,54 +1,82 @@
 import torch
+import sys
+import os
+import json
 import numpy as np
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from datasets import MRIImgDataset
+from datasets import MRIIMGDataset
 from models import Encoder
-from loss import MRILoss
+from losses import MRILoss
+from datetime import datetime
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(datetime.now())
 print("Working on {}.".format(device))
+#sys.stdout.flush()
+out_path = "trained_models/encoder/encoder"
 
-out_path = "trained_models/encoder"
+ID = sys.argv[1]
+tmpdir = sys.argv[2]
+with open(sys.argv[3]) as param_file:
+    params = json.load(param_file)
 
 ## PARAMS ##
-MRI_DIR = "data/preprocessed/fmri"
+MRI_DIR = os.path.join(tmpdir, "fmri")
 N_VOXELS = 7435
-IMG_DIR = "data/preprocessed/frames"
-FILTERS_TNG = ["sub-01", "task-s01"]
-FILTERS_VAL = ["sub-01", "task-s02"]
-BS = 100
-NB_EPOCHS = 10
-LR = 0.1
-L1_conv = 1e5
-L1_fc = 10
-L2 = 0.001
+IMG_DIR = os.path.join(tmpdir, "frames/data/preprocessed/frames")
+FILTERS_TNG = params["filters_tng"]# ["sub-0", "task-s01"]
+FILTERS_VAL = params["filters_val"]#["sub-0", "task-s02"]
+BS = params["batch_size"]#100
+NB_EPOCHS = params["nb_epochs"]#100
+LR = params["lr"]#0.01
+L1_conv = params["L1_conv"]#0.0001
+L1_fc = params["L1_fc"]#0.0001 
+L2 = params["L2"]#0.0001
+k_cosine = params["k_cosine"]#0.1
+
+if params["tag"]:
+    out_path += "_"+params["tag"]
+
+print("filters tng", FILTERS_TNG)
+print("filters val", FILTERS_VAL)
+print("np epochs", NB_EPOCHS, "; BS", BS, "; LR", LR, "; L1_conv", L1_conv, "; L1_fc", L1_fc, "; L2", L2, "k_cosine", k_cosine) 
+
 
 def step_decay(epoch):
     lrate = 1
-    if(epoch>20):
+    if(epoch > NB_EPOCHS/4):
         lrate = 0.1
-    if (epoch > 35):
+    if (epoch > 1.5*NB_EPOCHS/4):
         lrate = 0.01
-    if (epoch > 45):
+    if (epoch > NB_EPOCHS/2):
         lrate = 0.001
-    if (epoch > 50):
+    if (epoch > 3*NB_EPOCHS/4):
         lrate = 0.0001
     return lrate
 
-dataset_tng = MRIImgDataset(MRI_DIR, IMG_DIR, FILTERS_TNG)
-dataset_val = MRIImgDataset(MRI_DIR, IMG_DIR, FILTERS_VAL)
+dataset_tng = MRIIMGDataset(MRI_DIR, IMG_DIR, FILTERS_TNG)
+print(datetime.now(), "tng dataset done")
+dataset_val = MRIIMGDataset(MRI_DIR, IMG_DIR, FILTERS_VAL)
 
-dataloader_tng = DataLoader(dataset_tng, batch_size=BS, shuffle=True)
-dataloader_val = DataLoader(dataset_val, batch_size=BS, shuffle=True)
+print(datetime.now(), "val dataset done")
+#sys.stdout.flush()
+
+dataloader_tng = DataLoader(dataset_tng, batch_size=BS, shuffle=True, num_workers=8)
+print(datetime.now(), "tng dataloader done", len(dataloader_tng))
+dataloader_val = DataLoader(dataset_val, batch_size=BS, shuffle=True, num_workers=8)
+print(datetime.now(), "val dataloader done", len(dataloader_val))
 
 encoder = Encoder().to(device)
 optimizer = optim.Adam(encoder.parameters(), lr=LR, weight_decay=L2)
 scheduler = optim.lr_scheduler.LambdaLR(optimizer, step_decay)
-loss_function = MRILoss(device)
+loss_function = MRILoss(device, k_cosine=k_cosine)
 
 losses_tng = []
 losses_val = []
+
+#print(datetime.now(), "begin training")
+#sys.stdout.flush()
 
 ## TRAINING LOOP ##
 for epoch in range(NB_EPOCHS):
@@ -62,15 +90,16 @@ for epoch in range(NB_EPOCHS):
         loss = loss_function(output, gts.to(device))
         reg_loss = 0
         for param in encoder.parameters():
-            if param.shape[0] == N_VOXELS:
-                l1_factor = L1_fc
-            else:
-                l1_factor = L1_conv
-            reg_loss += l1_factor * torch.norm(param, 1)
+            if len(param.shape)>1:
+                if param.shape[0] == N_VOXELS:
+                    l1_factor = step_decay(epoch) * L1_fc
+                else:
+                    l1_factor = step_decay(epoch) * L1_conv
+                reg_loss += l1_factor * torch.norm(param, 1)
         tot_loss = loss + reg_loss
         tot_loss.sum().backward()
         optimizer.step()
-        loss_sum_tng += loss.sum().item()/BS/len(dataloader)
+        loss_sum_tng += loss.sum().item()/BS/len(dataloader_tng)
     losses_tng.append(loss_sum_tng)
     scheduler.step()
 
@@ -80,12 +109,14 @@ for epoch in range(NB_EPOCHS):
     for i_batch, sampled_batch in enumerate(dataloader_val):
         output = encoder(sampled_batch["img"].to(device))
         gts = sampled_batch["mri"]
-        loss = loss_function(output, gts)
-        loss_sum_val += loss.smu().item()/BS/len(dataloader_val)
+        loss = loss_function(output, gts.to(device))
+        loss_sum_val += loss.sum().item()/BS/len(dataloader_val)
     losses_val.append(loss_sum_val)
 
+    #print(datetime.now())
     print("epoch", epoch, "tng:", loss_sum_tng, "val:", loss_sum_val)
+    #sys.stdout.flush()
 
-torch.save(encoder, out_path+".pt")
-np.save(out_path+"_loss_tng.npy", np.array(losses_tng))
-np.save(out_path+"_loss_val.npy", np.array(losses_val))
+torch.save(encoder.to('cpu'), out_path+"_"+ID+".pt")
+np.save(out_path+"_"+ID+"_loss_tng.npy", np.array(losses_tng))
+np.save(out_path+"_"+ID+"_loss_val.npy", np.array(losses_val))
