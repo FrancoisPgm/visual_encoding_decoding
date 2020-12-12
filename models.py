@@ -81,31 +81,30 @@ class Encoder(nn.Module):
 
 
 
-
 class Decoder(nn.Module):
     def __init__(self, n_voxels):
         super(Decoder, self).__init__()
         self.fc = nn.Linear(n_voxels, 14*14*64)
         self.conv1 = nn.Sequential(
-                nn.Conv2d(64, 64, 3, stride=1),
+                nn.Conv2d(64, 64, 3, stride=1, padding=1),
                 nn.ReLU(),
-                nn.Upsample(scale_factor=2, mode='bilinear'),
+                nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
                 nn.BatchNorm2d(64)
         )
         self.conv2 = nn.Sequential(
-                nn.Conv2d(64, 64, 3, stride=1),
+                nn.Conv2d(64, 64, 3, stride=1, padding=1),
                 nn.ReLU(),
-                nn.Upsample(scale_factor=2, mode='bilinear'),
+                nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
                 nn.BatchNorm2d(64)
         )
         self.conv3 = nn.Sequential(
-                nn.Conv2d(64, 64, 3, stride=1),
+                nn.Conv2d(64, 64, 3, stride=1, padding=1),
                 nn.ReLU(),
-                nn.Upsample(scale_factor=2, mode='bilinear'),
+                nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
                 nn.BatchNorm2d(64)
         )
         self.conv4 = nn.Sequential(
-                nn.Conv2d(64, 3, 3, stride=1),
+                nn.Conv2d(64, 3, 3, stride=1, padding=1),
                 nn.Sigmoid()
         )
 
@@ -131,5 +130,3 @@ class Decoder(nn.Module):
                     normal_init(m,mean,std)
             except:
                 normal_init(block)
-
- 

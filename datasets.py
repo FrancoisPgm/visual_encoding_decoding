@@ -1,7 +1,9 @@
 import numpy as np
 import torch
 import os
+import pickle
 import PIL
+from PIL import Image
 from torchvision import transforms
 from torch.utils.data import Dataset
 
@@ -105,7 +107,7 @@ class IMGDataset(Dataset):
             i_start = 0
             i_end = int(ratio*len(imgdict["data"]))
         for i_img in range(i_start, i_end):
-            img = np.moveaxis(imagedict['data'][i_img].reshape(3, 64, 64).astype(np.uint8), 0, 2)
+            img = np.moveaxis(imgdict['data'][i_img].reshape(3, 64, 64).astype(np.uint8), 0, 2)
             img = Image.fromarray(img).resize((112,112))
             img = torch.stack([torch_transform(img)])
             self.handlers.append({"img":img})
