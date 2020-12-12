@@ -15,7 +15,7 @@ def normal_init(m, mean=0., std=1.):
 
 
 class Encoder(nn.Module):
-    def __init__(self, n_voxels=7435, n_img=1):
+    def __init__(self, n_voxels=7435, dropout=0.2, n_img=1):
         super(Encoder, self).__init__()
         self.n_img = n_img
         self.n_voxels=n_voxels
@@ -38,7 +38,7 @@ class Encoder(nn.Module):
         self.flatten = nn.Flatten(start_dim=1)
         if self.n_img > 1:
             self.conv_temp = nn.Conv1d(n_img, 1, 1)
-        self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=dropout)
         self.fc = nn.Linear(1152, n_voxels)
         self.weight_init()
 

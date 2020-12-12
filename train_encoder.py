@@ -34,25 +34,26 @@ L1_conv = params["L1_conv"]#0.0001
 L1_fc = params["L1_fc"]#0.0001 
 L2 = params["L2"]#0.0001
 k_cosine = params["k_cosine"]#0.1
+dropout = params["dropout"]
 
 if params["tag"]:
     out_path += "_"+params["tag"]
 
 print("filters tng", FILTERS_TNG)
 print("filters val", FILTERS_VAL)
-print("np epochs", NB_EPOCHS, "; BS", BS, "; LR", LR, "; L1_conv", L1_conv, "; L1_fc", L1_fc, "; L2", L2, "k_cosine", k_cosine) 
+print("np epochs", NB_EPOCHS, "; BS", BS, "; LR", LR, "; L1_conv", L1_conv, "; L1_fc", L1_fc, "; L2", L2, ": dropout", dropout, "; k_cosine", k_cosine) 
 
 
 def step_decay(epoch):
     lrate = 1
-    if(epoch > NB_EPOCHS/4):
-        lrate = 0.1
-    if (epoch > 1.5*NB_EPOCHS/4):
-        lrate = 0.01
-    if (epoch > NB_EPOCHS/2):
-        lrate = 0.001
-    if (epoch > 3*NB_EPOCHS/4):
-        lrate = 0.0001
+#    if(epoch > NB_EPOCHS/4):
+#        lrate = 0.1
+#    if (epoch > 1.5*NB_EPOCHS/4):
+#        lrate = 0.01
+#    if (epoch > NB_EPOCHS/2):
+#        lrate = 0.001
+#    if (epoch > 3*NB_EPOCHS/4):
+#        lrate = 0.0001
     return lrate
 
 dataset_tng = MRIIMGDataset(MRI_DIR, IMG_DIR, FILTERS_TNG)
@@ -67,13 +68,16 @@ print(datetime.now(), "tng dataloader done", len(dataloader_tng))
 dataloader_val = DataLoader(dataset_val, batch_size=BS, shuffle=True, num_workers=8)
 print(datetime.now(), "val dataloader done", len(dataloader_val))
 
-encoder = Encoder().to(device)
+encoder = Encoder(dropout=dropout).to(device)
 optimizer = optim.Adam(encoder.parameters(), lr=LR, weight_decay=L2)
-scheduler = optim.lr_scheduler.LambdaLR(optimizer, step_decay)
+#scheduler = optim.lr_scheduler.LambdaLR(optimizer, step_decay)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.1, patience=10)
 loss_function = MRILoss(device, k_cosine=k_cosine)
 
 losses_tng = []
 losses_val = []
+examples_pred = []
+examples_gt = []
 
 #print(datetime.now(), "begin training")
 #sys.stdout.flush()
@@ -92,16 +96,20 @@ for epoch in range(NB_EPOCHS):
         for param in encoder.parameters():
             if len(param.shape)>1:
                 if param.shape[0] == N_VOXELS:
-                    l1_factor = step_decay(epoch) * L1_fc
+                    l1_factor = optimizer.param_groups[0]['lr'] * L1_fc
                 else:
-                    l1_factor = step_decay(epoch) * L1_conv
+                    l1_factor = optimizer.param_groups[0]['lr'] * L1_conv
                 reg_loss += l1_factor * torch.norm(param, 1)
         tot_loss = loss + reg_loss
         tot_loss.sum().backward()
         optimizer.step()
-        loss_sum_tng += loss.sum().item()/BS/len(dataloader_tng)
+        loss_sum_tng += loss.sum().item()/len(dataloader_tng)
     losses_tng.append(loss_sum_tng)
-    scheduler.step()
+    if not epoch%10:
+        examples_gt.append(gts[0].to('cpu').detach().numpy())
+        examples_pred.append(output[0].to('cpu').detach().numpy())
+
+    scheduler.step(loss_sum_tng)
 
     loss_sum_val = 0.
     encoder.eval()
@@ -110,7 +118,7 @@ for epoch in range(NB_EPOCHS):
         output = encoder(sampled_batch["img"].to(device))
         gts = sampled_batch["mri"]
         loss = loss_function(output, gts.to(device))
-        loss_sum_val += loss.sum().item()/BS/len(dataloader_val)
+        loss_sum_val += loss.sum().item()/len(dataloader_val)
     losses_val.append(loss_sum_val)
 
     #print(datetime.now())
@@ -118,5 +126,7 @@ for epoch in range(NB_EPOCHS):
     #sys.stdout.flush()
 
 torch.save(encoder.to('cpu'), out_path+"_"+ID+".pt")
-np.save(out_path+"_"+ID+"_loss_tng.npy", np.array(losses_tng))
-np.save(out_path+"_"+ID+"_loss_val.npy", np.array(losses_val))
+np.save(out_path+"_"+ID+"_examples_pred.npy", np.array(examples_pred))
+np.save(out_path+"_"+ID+"_examples_gt.npy", np.array(examples_gt))
+#np.save(out_path+"_"+ID+"_loss_tng.npy", np.array(losses_tng))
+#np.save(out_path+"_"+ID+"_loss_val.npy", np.array(losses_val))
