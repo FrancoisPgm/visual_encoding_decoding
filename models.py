@@ -23,7 +23,7 @@ class Encoder(nn.Module):
         self.alexnetConv1 = nn.Sequential(
                 torch.load("data/external/alexconv1.pkl"),
                 nn.ReLU(),
-                nn.BatchNorm2d(64),
+                #nn.BatchNorm2d(64),
         )
         self.conv2 = nn.Sequential(
                 nn.Conv2d(64, 32, 3, stride=2),
@@ -130,3 +130,39 @@ class Decoder(nn.Module):
                     normal_init(m,mean,std)
             except:
                 normal_init(block)
+
+
+
+#def VAE(nn.Module):
+#    def __init__(self, n_voxels, n_latent=1024):
+#        self.conv1 = nn.Sequential(
+#                nn.Conv2d(3, 128, 3, stride=2, padding=2),
+#                nn.ReLU(),
+#                nn.BatchNorm2d(128)
+#                )
+#        self.conv2 = nn.Sequential(
+#                nn.Conv2d(128, 256, 3, stride=2, padding=2),
+#                nn.ReLU(),
+#                nn.BatchNorm2d(256)
+#                )
+#        self.conv3 = nn.Sequential(
+#                nn.Conv2d(256, 512, 3, stride=2, padding=2),
+#                nn.ReLU(),
+#                nn.BatchNorm2d(512)
+#                )
+#        self.conv4 = nn.Sequential(
+#                nn.Conv2d(512, 1024, 3, stride=2, padding=2),
+#                nn.ReLU(),
+#                nn.BatchNorm2d(1024)
+#                )
+#        self.conv5 = nn.Sequential(
+#                nn.Conv2d(512, 256, 3, stride=2, padding=2),
+#                nn.ReLU(),
+#                nn.BatchNorm2d(256),
+#                nn.Flatten()
+#                )
+#
+#        self.deconv1 = nn.Sequential(
+
+
+

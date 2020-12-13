@@ -19,7 +19,7 @@ class IMGLoss(object):
         self.k_TV = k_TV
         self.VGG19Conv1 = torch.load("data/external/vgg19conv1.pkl").to(device)
         self.VGG19Conv1.eval()
-        self.VGG19Conv2 = torch.load("data/external/VGG19Conv2.pkl").to(device)
+        self.VGG19Conv2 = torch.load("data/external/vgg19conv2.pkl").to(device)
         self.VGG19Conv2.eval()
 
     def TV_loss(self, img):

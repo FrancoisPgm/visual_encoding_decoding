@@ -71,7 +71,7 @@ class MRIDataset(Dataset):
         mri_path_list = [os.path.join(mri_dir, p) for p in os.listdir(mri_dir) if ".npy" in p]
 
         for filter in filters:
-            mri_path_list = [p for p in mri_path if filter in p]
+            mri_path_list = [p for p in mri_path_list if filter in p]
 
         self.handlers = []
         if validation:

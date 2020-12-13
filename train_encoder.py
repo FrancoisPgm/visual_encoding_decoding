@@ -35,13 +35,14 @@ L1_fc = params["L1_fc"]#0.0001
 L2 = params["L2"]#0.0001
 k_cosine = params["k_cosine"]#0.1
 dropout = params["dropout"]
+n_img = params["n_img"]
 
 if params["tag"]:
     out_path += "_"+params["tag"]
 
 print("filters tng", FILTERS_TNG)
 print("filters val", FILTERS_VAL)
-print("np epochs", NB_EPOCHS, "; BS", BS, "; LR", LR, "; L1_conv", L1_conv, "; L1_fc", L1_fc, "; L2", L2, ": dropout", dropout, "; k_cosine", k_cosine) 
+print("np epochs", NB_EPOCHS, "; BS", BS, "; LR", LR, "; L1_conv", L1_conv, "; L1_fc", L1_fc, "; L2", L2, ": dropout", dropout, "; k_cosine", k_cosine, "; n_img", n_img) 
 
 
 def step_decay(epoch):
@@ -56,9 +57,9 @@ def step_decay(epoch):
 #        lrate = 0.0001
     return lrate
 
-dataset_tng = MRIIMGDataset(MRI_DIR, IMG_DIR, FILTERS_TNG)
+dataset_tng = MRIIMGDataset(MRI_DIR, IMG_DIR, FILTERS_TNG, img_per_mri=n_img)
 print(datetime.now(), "tng dataset done")
-dataset_val = MRIIMGDataset(MRI_DIR, IMG_DIR, FILTERS_VAL)
+dataset_val = MRIIMGDataset(MRI_DIR, IMG_DIR, FILTERS_VAL, img_per_mri=n_img)
 
 print(datetime.now(), "val dataset done")
 #sys.stdout.flush()
@@ -68,8 +69,9 @@ print(datetime.now(), "tng dataloader done", len(dataloader_tng))
 dataloader_val = DataLoader(dataset_val, batch_size=BS, shuffle=True, num_workers=8)
 print(datetime.now(), "val dataloader done", len(dataloader_val))
 
-encoder = Encoder(dropout=dropout).to(device)
-optimizer = optim.Adam(encoder.parameters(), lr=LR, weight_decay=L2)
+encoder = Encoder(dropout=dropout, n_img=n_img).to(device)
+encoder_parameters = [p for p in encoder.parameters()]
+optimizer = optim.Adam(encoder_parameters[1:], lr=LR, weight_decay=L2)
 #scheduler = optim.lr_scheduler.LambdaLR(optimizer, step_decay)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.1, patience=10)
 loss_function = MRILoss(device, k_cosine=k_cosine)
